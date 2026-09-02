@@ -40,17 +40,18 @@ function renderTable(data) {
   tbody.innerHTML = keys.map(versionKey => {
     const item = data[versionKey];
     const isActive = item.isActive === true;
+    const versionNum = item.version || versionKey.replace(/_/g, '.');
     
     return `
       <tr class="hover:bg-slate-800/50 transition">
-        <td class="p-3 font-bold text-amber-400 font-mono">v${item.version}</td>
+        <td class="p-3 font-bold text-amber-400 font-mono">v${versionNum}</td>
         <td class="p-3">
           ${isActive 
             ? '<span class="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full">ACTIVE</span>' 
             : '<span class="px-2 py-0.5 text-[10px] font-bold bg-slate-800 text-slate-400 rounded-full">INACTIVE</span>'}
         </td>
         <td class="p-3 text-slate-300 max-w-xs truncate">${item.notes || '-'}</td>
-        <td class="p-3 font-mono text-slate-400 text-[11px]">${item.fileName}</td>
+        <td class="p-3 font-mono text-slate-400 text-[11px]">${item.fileName || '-'}</td>
         <td class="p-3">
           ${!isActive 
             ? `<button onclick="window.setActiveVersion('${versionKey}')" class="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs rounded-lg transition">Set Active Target</button>`
@@ -65,8 +66,8 @@ function renderTable(data) {
 function updateActiveBadge(data) {
   let activeVersion = "None";
   for (const key in data) {
-    if (data[key].isActive) {
-      activeVersion = `v${data[key].version}`;
+    if (data[key] && data[key].isActive) {
+      activeVersion = `v${data[key].version || key.replace(/_/g, '.')}`;
       break;
     }
   }
@@ -88,17 +89,18 @@ window.setActiveVersion = function(targetKey) {
 document.getElementById('uploadForm').addEventListener('submit', (e) => {
   e.preventDefault();
   
-  const version = document.getElementById('inputVersion').value.trim();
+  const rawVersion = document.getElementById('inputVersion').value.trim();
   const notes = document.getElementById('inputNotes').value.trim();
   const file = document.getElementById('inputFile').files[0];
   const makeActive = document.getElementById('checkSetActive').checked;
 
-  if (!version || !file) {
+  if (!rawVersion || !file) {
     alert("Please enter a version string and attach a file.");
     return;
   }
 
-  const versionKey = version.replace(/\./g, '_');
+  const cleanVersion = rawVersion.replace(/[^0-9.]/g, '');
+  const versionKey = cleanVersion.replace(/\./g, '_');
   const fileStorageRef = storageRef(storage, `updates/${versionKey}/${file.name}`);
   const uploadTask = uploadBytesResumable(fileStorageRef, file);
 
@@ -128,7 +130,7 @@ document.getElementById('uploadForm').addEventListener('submit', (e) => {
       }
 
       updates[`app_updates/${versionKey}`] = {
-        version: version,
+        version: cleanVersion,
         notes: notes,
         fileName: file.name,
         downloadUrl: downloadURL,
@@ -140,7 +142,7 @@ document.getElementById('uploadForm').addEventListener('submit', (e) => {
 
       progressContainer.classList.add('hidden');
       document.getElementById('uploadForm').reset();
-      alert(`Version v${version} published successfully!`);
+      alert(`Version v${cleanVersion} published successfully!`);
     }
   );
 });
